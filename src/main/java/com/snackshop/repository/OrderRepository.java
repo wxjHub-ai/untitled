@@ -1,0 +1,11 @@
+package com.snackshop.repository;
+
+import com.snackshop.model.Order;
+import com.snackshop.model.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+
+public interface OrderRepository extends JpaRepository<Order, Long> {
+    List<Order> findByUser(User user);
+    List<Order> findAllByOrderByOrderDateDesc();
+}

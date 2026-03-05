@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="fragments/layout :: layout(~{::title}, ~{::section})">
+<head>
+    <title>我的订单 - 零食商城</title>
+</head>
+<body>
+<section>
+    <div class="container mt-5 mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold mb-0"><i class="fas fa-list-alt text-primary me-2"></i> 我的订单</h2>
+            <a href="/" class="btn btn-outline-secondary rounded-pill"><i class="fas fa-arrow-left me-1"></i> 返回首页</a>
+        </div>
+
+        <div th:if="${orders == null || orders.empty}" class="text-center py-5 bg-white rounded shadow-sm">
+            <h4 class="text-muted">暂无订单记录</h4>
+            <a href="/" class="btn btn-primary mt-3">去购物</a>
+        </div>
+
+        <div th:unless="${orders == null || orders.empty}">
+            <div class="card shadow-sm mb-4" th:each="order : ${orders}">
+                <div class="card-header bg-white py-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <span class="text-muted small">订单号: </span>
+                            <span class="fw-bold" th:text="'#' + ${order.id}">#1</span>
+                        </div>
+                        <div class="col-md-4 text-center">
+                             <span class="text-muted small">下单时间: </span>
+                             <span th:text="${#temporals.format(order.orderDate, 'yyyy-MM-dd HH:mm')}">2025-12-18 12:00</span>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <span class="badge bg-success rounded-pill" th:text="${order.status}">已支付</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tbody>
+                            <tr th:each="item : ${order.items}">
+                                <td style="width: 60%;">
+                                    <div class="d-flex align-items-center">
+                                        <img th:src="${item.product.imageUrl}" class="rounded me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                        <span th:text="${item.product.name}">Product</span>
+                                    </div>
+                                </td>
+                                <td class="text-center" th:text="'x' + ${item.quantity}">x1</td>
+                                <td class="text-end" th:text="'￥' + ${item.price}">￥10.00</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <hr>
+                    <div class="text-end">
+                        <span class="text-muted me-2">实付金额:</span>
+                        <span class="h5 text-danger fw-bold" th:text="'￥' + ${order.totalAmount}">￥100.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>
