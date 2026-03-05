@@ -10,6 +10,9 @@ import java.util.Set;
 @Entity
 @Table(name = "users")
 public class User {
+    @Transient
+    private String storeName;
+
     // 主键，自动递增
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,7 +29,10 @@ public class User {
     // 电子邮件
     private String email;
 
-    // 用户的角色（ADMIN 或 USER），以字符串形式存储在数据库中
+    @OneToOne(mappedBy = "owner", cascade = CascadeType.ALL)
+    private Store store;
+
+    // 用户的角色（ADMIN, USER 或 MERCHANT），以字符串形式存储在数据库中
     @Enumerated(EnumType.STRING)
     private Role role;
 
@@ -34,11 +40,12 @@ public class User {
     public User() {}
 
     // 带参数的构造函数，方便在代码中创建用户对象
-    public User(String username, String password, String email, Role role) {
+    public User(String username, String password, String email, Role role, String storeName) {
         this.username = username;
         this.password = password;
         this.email = email;
         this.role = role;
+        this.storeName = storeName;
     }
 
     // Getter 和 Setter 方法，用于获取和设置对象的属性值
@@ -54,6 +61,12 @@ public class User {
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
+    public Store getStore() { return store; }
+    public void setStore(Store store) { this.store = store; }
+
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
+
+    public String getStoreName() { return storeName; }
+    public void setStoreName(String storeName) { this.storeName = storeName; }
 }

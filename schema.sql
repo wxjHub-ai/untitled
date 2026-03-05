@@ -5,20 +5,50 @@
 -- 1. Table: users (用户表)
 -- Stores customer and admin information
 -- =============================================
+-- =============================================
+-- 1. Table: users (用户表)
+-- =============================================
 CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
     username VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     email VARCHAR(255),
-    role VARCHAR(50) NOT NULL -- 'USER' or 'ADMIN'
+    role VARCHAR(50) NOT NULL -- 'USER', 'ADMIN', 'MERCHANT'
 );
 
-COMMENT ON TABLE users IS 'System users including customers and administrators';
-COMMENT ON COLUMN users.role IS 'Role of the user, e.g., USER, ADMIN';
+-- =============================================
+-- 2. Table: stores (店铺表) - 新增
+-- =============================================
+CREATE TABLE IF NOT EXISTS stores (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    logo_url VARCHAR(255),
+    owner_id BIGINT NOT NULL,
+    status VARCHAR(50) DEFAULT 'ACTIVE', -- 'ACTIVE', 'CLOSED'
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_stores_owner FOREIGN KEY (owner_id) REFERENCES users(id)
+);
 
 -- =============================================
--- 2. Table: products (商品表)
--- Stores product details
+-- 3. Table: user_addresses (收货地址表) - 新增
+-- =============================================
+CREATE TABLE IF NOT EXISTS user_addresses (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    receiver_name VARCHAR(100) NOT NULL,
+    receiver_phone VARCHAR(20) NOT NULL,
+    province VARCHAR(50),
+    city VARCHAR(50),
+    district VARCHAR(50),
+    detail_address TEXT NOT NULL,
+    is_default BOOLEAN DEFAULT FALSE,
+    label VARCHAR(20), -- '家', '公司', '学校'
+    CONSTRAINT fk_addresses_user FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- =============================================
+-- 4. Table: products (商品表) - 修改关联到店铺
 -- =============================================
 CREATE TABLE IF NOT EXISTS products (
     id BIGSERIAL PRIMARY KEY,
@@ -27,22 +57,38 @@ CREATE TABLE IF NOT EXISTS products (
     price NUMERIC(19, 2) NOT NULL,
     stock INTEGER NOT NULL,
     image_url VARCHAR(255),
-    category VARCHAR(255)
+    category VARCHAR(255),
+    store_id BIGINT, -- 关联到店铺
+    deleted BOOLEAN DEFAULT FALSE,
+    CONSTRAINT fk_products_store FOREIGN KEY (store_id) REFERENCES stores(id)
 );
 
-COMMENT ON TABLE products IS 'Items available for sale in the shop';
+-- =============================================
+-- 5. Table: cart_items (购物车持久化) - 新增
+-- =============================================
+CREATE TABLE IF NOT EXISTS cart_items (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
+    quantity INTEGER NOT NULL,
+    added_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_cart_user FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_cart_product FOREIGN KEY (product_id) REFERENCES products(id)
+);
 
 -- =============================================
--- 3. Table: orders (订单表)
--- Stores order summary information
+-- 6. Table: orders (订单表) - 修改关联到地址
 -- =============================================
 CREATE TABLE IF NOT EXISTS orders (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
+    address_id BIGINT, -- 关联到具体的收货地址
     order_date TIMESTAMP WITHOUT TIME ZONE,
-    status VARCHAR(50), -- 'PENDING', 'SHIPPED', 'DELIVERED', 'CANCELLED'
+    status VARCHAR(50), 
     total_amount NUMERIC(19, 2),
-    CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id)
+    delivery_address TEXT, -- 冗余存储下单时的快照地址
+    CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_orders_address FOREIGN KEY (address_id) REFERENCES user_addresses(id)
 );
 
 COMMENT ON TABLE orders IS 'Customer orders';

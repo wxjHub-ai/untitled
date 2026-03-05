@@ -65,8 +65,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         http.authorizeRequests()
                 // 允许所有人访问首页、注册页以及静态资源 (CSS, JS, 图片)
                 .antMatchers("/", "/register", "/css/**", "/js/**", "/images/**", "/product_images/**").permitAll()
-                // 只有角色为 "ADMIN" (管理员) 的用户才能访问以 "/admin/" 开头的路径
-                .antMatchers("/admin/**").hasRole("ADMIN")
+                // 只有角色为 "ADMIN" (管理员) 或 "MERCHANT" (商家) 的用户才能访问以 "/admin/" 开头的路径
+                .antMatchers("/admin/**").hasAnyRole("ADMIN", "MERCHANT")
                 // 其他所有请求都必须登录后才能访问
                 .anyRequest().authenticated()
                 .and()

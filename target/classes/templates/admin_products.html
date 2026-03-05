@@ -7,7 +7,13 @@
 <div>
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>商品列表</h2>
-        <div>
+        <div class="d-flex align-items-center">
+            <form th:action="@{/admin/products}" method="get" class="d-flex me-3" sec:authorize="hasRole('ADMIN')">
+                <select name="merchantId" class="form-select form-select-sm me-2" style="width: auto;" onchange="this.form.submit()">
+                    <option value="">所有商家</option>
+                    <option th:each="m : ${merchants}" th:value="${m.id}" th:text="${m.storeName ?: m.username}" th:selected="${m.id == selectedMerchantId}"></option>
+                </select>
+            </form>
             <a href="/" target="_blank" class="btn btn-outline-secondary me-2"><i class="fas fa-home"></i> 返回商城首页</a>
             <a href="/admin/products/add" class="btn btn-success"><i class="fas fa-plus"></i> 添加商品</a>
         </div>
@@ -24,6 +30,7 @@
                     <th>价格</th>
                     <th>库存</th>
                     <th>分类</th>
+                    <th sec:authorize="hasRole('ADMIN')">所属店铺</th>
                     <th class="text-end pe-4">操作</th>
                 </tr>
                 </thead>
@@ -39,6 +46,9 @@
                         <span th:class="${product.stock < 10 ? 'badge bg-danger' : 'badge bg-success'}" th:text="${product.stock}">100</span>
                     </td>
                     <td th:text="${product.category}">Category</td>
+                    <td sec:authorize="hasRole('ADMIN')">
+                        <span th:text="${product.store != null ? product.store.name : '平台自营'}" class="badge bg-info text-dark">Store</span>
+                    </td>
                     <td class="text-end pe-4">
                         <a th:href="@{/admin/products/edit/{id}(id=${product.id})}" class="btn btn-sm btn-outline-primary me-2"><i class="fas fa-edit"></i></a>
                         <a th:href="@{/admin/products/delete/{id}(id=${product.id})}" class="btn btn-sm btn-outline-danger" onclick="return confirm('确定要删除这个商品吗？');"><i class="fas fa-trash"></i></a>

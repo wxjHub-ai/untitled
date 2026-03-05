@@ -33,6 +33,7 @@
                                     <select name="role" class="form-select form-select-sm me-2" style="width: auto;">
                                         <option value="USER" th:selected="${user.role.name() == 'USER'}">普通用户</option>
                                         <option value="ADMIN" th:selected="${user.role.name() == 'ADMIN'}">管理员</option>
+                                        <option value="MERCHANT" th:selected="${user.role.name() == 'MERCHANT'}">商家</option>
                                     </select>
                                     <button type="submit" class="btn btn-sm btn-outline-primary">更新</button>
                                 </form>

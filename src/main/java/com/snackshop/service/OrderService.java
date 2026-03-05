@@ -22,11 +22,12 @@ public class OrderService {
     private ProductRepository productRepository;
 
     @Transactional
-    public void createOrder(User user, List<OrderItem> items, java.math.BigDecimal totalAmount) {
+    public void createOrder(User user, List<OrderItem> items, java.math.BigDecimal totalAmount, String deliveryAddress) {
         Order order = new Order();
         order.setUser(user);
         order.setOrderDate(LocalDateTime.now());
         order.setStatus("已支付");
+        order.setDeliveryAddress(deliveryAddress);
         
         java.math.BigDecimal serverCalculatedTotal = java.math.BigDecimal.ZERO;
         
@@ -59,9 +60,27 @@ public class OrderService {
         order.setTotalAmount(serverCalculatedTotal);
         orderRepository.save(order);
     }
+
+    public List<Order> getOrdersByMerchant(User merchant) {
+        // Find all orders that contain at least one product from this merchant
+        return orderRepository.findAll().stream()
+                .filter(order -> order.getItems().stream()
+                        .anyMatch(item -> item.getProduct().getStore() != null && 
+                                          item.getProduct().getStore().getOwner().getId().equals(merchant.getId())))
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    public java.math.BigDecimal getMerchantRevenue(User merchant) {
+        return orderRepository.findAll().stream()
+                .flatMap(order -> order.getItems().stream())
+                .filter(item -> item.getProduct().getStore() != null && 
+                                item.getProduct().getStore().getOwner().getId().equals(merchant.getId()))
+                .map(item -> item.getPrice().multiply(new java.math.BigDecimal(item.getQuantity())))
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+    }
     
     public List<Order> getOrdersByUser(User user) {
-        return orderRepository.findByUser(user);
+        return orderRepository.findByUserOrderByOrderDateDesc(user);
     }
 
     public List<Order> getAllOrders() {
@@ -78,5 +97,43 @@ public class OrderService {
         return orderRepository.findAll().stream()
                 .map(Order::getTotalAmount)
                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+    }
+
+    @Transactional
+    public void deleteOrder(Long id) {
+        Order order = orderRepository.findById(id).orElseThrow();
+        if ("已取消".equals(order.getStatus())) {
+            orderRepository.delete(order);
+        } else {
+            throw new RuntimeException("只能删除已取消的订单！");
+        }
+    }
+
+    public List<Order> searchOrders(String status, java.time.LocalDate startDate, java.time.LocalDate endDate, User merchant) {
+        List<Order> orders;
+        
+        java.time.LocalDateTime start = (startDate != null) ? startDate.atStartOfDay() : null;
+        java.time.LocalDateTime end = (endDate != null) ? endDate.atTime(23, 59, 59) : null;
+
+        if (status != null && !status.isEmpty() && !status.equals("全部") && start != null && end != null) {
+            orders = orderRepository.findByStatusAndOrderDateBetweenOrderByOrderDateDesc(status, start, end);
+        } else if (status != null && !status.isEmpty() && !status.equals("全部")) {
+            orders = orderRepository.findByStatusOrderByOrderDateDesc(status);
+        } else if (start != null && end != null) {
+            orders = orderRepository.findByOrderDateBetweenOrderByOrderDateDesc(start, end);
+        } else {
+            orders = orderRepository.findAllByOrderByOrderDateDesc();
+        }
+
+        // If merchant is provided, filter the results
+        if (merchant != null) {
+            return orders.stream()
+                .filter(order -> order.getItems().stream()
+                    .anyMatch(item -> item.getProduct().getStore() != null && 
+                                      item.getProduct().getStore().getOwner().getId().equals(merchant.getId())))
+                .collect(java.util.stream.Collectors.toList());
+        }
+        
+        return orders;
     }
 }

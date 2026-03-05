@@ -28,6 +28,10 @@ public class ProductService {
     @Autowired
     private ProductRepository productRepository;
 
+    public List<Product> getProductsByStore(com.snackshop.model.Store store) {
+        return productRepository.findByStoreAndDeletedFalse(store);
+    }
+
     /**
      * 获取所有未删除的商品列表
      * @return 商品列表
@@ -105,6 +109,11 @@ public class ProductService {
         }
         // 调用 Repository 保存商品到数据库
         productRepository.save(product);
+    }
+
+    public void saveProduct(Product product, MultipartFile imageFile, com.snackshop.model.Store store) {
+        product.setStore(store);
+        saveProduct(product, imageFile);
     }
     
     /**

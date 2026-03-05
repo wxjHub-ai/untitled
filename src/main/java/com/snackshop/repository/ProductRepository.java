@@ -1,6 +1,7 @@
 package com.snackshop.repository;
 
 import com.snackshop.model.Product;
+import com.snackshop.model.Store;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
@@ -10,7 +11,12 @@ import java.util.List;
  * Spring Data JPA 会在运行时自动生成该接口的实现类
  */
 public interface ProductRepository extends JpaRepository<Product, Long> {
-    
+
+    /**
+     * 查找所属店铺的未删除商品
+     */
+    List<Product> findByStoreAndDeletedFalse(Store store);
+
     /**
      * 根据商品分类查找商品列表
      * @param category 商品分类名称

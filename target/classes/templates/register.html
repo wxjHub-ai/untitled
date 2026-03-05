@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" th:replace="fragments/layout :: layout(~{::title}, ~{::section})">
 <head>
-    <title>注册 - 零食商城</title>
+    <title>注册 - 集食行乐</title>
 </head>
 <body>
 <section>
@@ -26,6 +26,27 @@
                                     <input type="email" th:field="*{email}" class="form-control bg-light border-start-0" required>
                                 </div>
                             </div>
+                            <div class="mb-3">
+                                <label class="form-label text-muted">注册身份</label>
+                                <select th:field="*{role}" class="form-select bg-light" id="roleSelect" onchange="toggleStoreName()">
+                                    <option value="USER">普通用户</option>
+                                    <option value="MERCHANT">商家</option>
+                                </select>
+                            </div>
+                            <div class="mb-3" id="storeNameDiv" style="display:none;">
+                                <label class="form-label text-muted">商店名称</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-store"></i></span>
+                                    <input type="text" th:field="*{storeName}" class="form-control bg-light border-start-0">
+                                </div>
+                            </div>
+                            <script>
+                                function toggleStoreName() {
+                                    const role = document.getElementById('roleSelect').value;
+                                    const storeDiv = document.getElementById('storeNameDiv');
+                                    storeDiv.style.display = role === 'MERCHANT' ? 'block' : 'none';
+                                }
+                            </script>
                             <div class="mb-4">
                                 <label class="form-label text-muted">密码</label>
                                 <div class="input-group">

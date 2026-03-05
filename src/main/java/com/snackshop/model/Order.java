@@ -32,6 +32,18 @@ public class Order {
     // 订单总金额
     private BigDecimal totalAmount;
 
+    // 关联的地址簿地址
+    @ManyToOne
+    @JoinColumn(name = "address_id")
+    private UserAddress address;
+
+    // 下单时的快照地址
+    @Column(nullable = false)
+    private String deliveryAddress;
+
+    public UserAddress getAddress() { return address; }
+    public void setAddress(UserAddress address) { this.address = address; }
+
     // 订单包含的商品项 (一对多关系，一个订单包含多个商品项)
     // cascade = CascadeType.ALL 表示对订单的操作会级联影响到订单项
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -55,6 +67,9 @@ public class Order {
 
     public BigDecimal getTotalAmount() { return totalAmount; }
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+
+    public String getDeliveryAddress() { return deliveryAddress; }
+    public void setDeliveryAddress(String deliveryAddress) { this.deliveryAddress = deliveryAddress; }
 
     public List<OrderItem> getItems() { return items; }
     public void setItems(List<OrderItem> items) { this.items = items; }

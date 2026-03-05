@@ -40,6 +40,11 @@ public class Product {
     // 商品分类 (例如：膨化食品, 坚果, 饮品)
     private String category;
 
+    // 所属店铺
+    @ManyToOne
+    @JoinColumn(name = "store_id")
+    private Store store;
+
     // 软删除标志 (true 表示已删除，不在前端显示)
     private boolean deleted = false;
 
@@ -80,4 +85,7 @@ public class Product {
 
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
+
+    public Store getStore() { return store; }
+    public void setStore(Store store) { this.store = store; }
 }
