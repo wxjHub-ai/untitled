@@ -25,9 +25,18 @@ public class CartService {
     @Transactional
     public void addItem(User user, Product product, int quantity) {
         Optional<CartItem> existingItem = cartItemRepository.findByUserAndProduct(user, product);
+        int totalQuantity = quantity;
+        if (existingItem.isPresent()) {
+            totalQuantity += existingItem.get().getQuantity();
+        }
+
+        if (totalQuantity > product.getStock()) {
+            throw new RuntimeException("库存不足，无法添加！");
+        }
+
         if (existingItem.isPresent()) {
             CartItem item = existingItem.get();
-            item.setQuantity(item.getQuantity() + quantity);
+            item.setQuantity(totalQuantity);
             cartItemRepository.save(item);
         } else {
             CartItem newItem = new CartItem();
@@ -35,6 +44,27 @@ public class CartService {
             newItem.setProduct(product);
             newItem.setQuantity(quantity);
             cartItemRepository.save(newItem);
+        }
+    }
+
+    @Transactional
+    public void updateQuantity(User user, Long productId, int delta) {
+        Optional<CartItem> itemOpt = cartItemRepository.findByUser(user).stream()
+                .filter(item -> item.getProduct().getId().equals(productId))
+                .findFirst();
+
+        if (itemOpt.isPresent()) {
+            CartItem item = itemOpt.get();
+            int newQuantity = item.getQuantity() + delta;
+
+            if (newQuantity <= 0) {
+                cartItemRepository.delete(item);
+            } else if (newQuantity > item.getProduct().getStock()) {
+                throw new RuntimeException("库存不足，无法添加！");
+            } else {
+                item.setQuantity(newQuantity);
+                cartItemRepository.save(item);
+            }
         }
     }
 

@@ -109,31 +109,20 @@ public class OrderService {
         }
     }
 
-    public List<Order> searchOrders(String status, java.time.LocalDate startDate, java.time.LocalDate endDate, User merchant) {
-        List<Order> orders;
+    public List<Order> searchOrders(String status, String username, java.time.LocalDate startDate, java.time.LocalDate endDate, User merchant) {
+        List<Order> orders = orderRepository.findAllByOrderByOrderDateDesc();
         
         java.time.LocalDateTime start = (startDate != null) ? startDate.atStartOfDay() : null;
         java.time.LocalDateTime end = (endDate != null) ? endDate.atTime(23, 59, 59) : null;
 
-        if (status != null && !status.isEmpty() && !status.equals("全部") && start != null && end != null) {
-            orders = orderRepository.findByStatusAndOrderDateBetweenOrderByOrderDateDesc(status, start, end);
-        } else if (status != null && !status.isEmpty() && !status.equals("全部")) {
-            orders = orderRepository.findByStatusOrderByOrderDateDesc(status);
-        } else if (start != null && end != null) {
-            orders = orderRepository.findByOrderDateBetweenOrderByOrderDateDesc(start, end);
-        } else {
-            orders = orderRepository.findAllByOrderByOrderDateDesc();
-        }
-
-        // If merchant is provided, filter the results
-        if (merchant != null) {
-            return orders.stream()
-                .filter(order -> order.getItems().stream()
-                    .anyMatch(item -> item.getProduct().getStore() != null && 
-                                      item.getProduct().getStore().getOwner().getId().equals(merchant.getId())))
-                .collect(java.util.stream.Collectors.toList());
-        }
-        
-        return orders;
+        return orders.stream()
+            .filter(order -> (status == null || status.isEmpty() || status.equals("全部") || order.getStatus().equals(status)))
+            .filter(order -> (username == null || username.isEmpty() || order.getUser().getUsername().toLowerCase().contains(username.toLowerCase())))
+            .filter(order -> (start == null || !order.getOrderDate().isBefore(start)))
+            .filter(order -> (end == null || !order.getOrderDate().isAfter(end)))
+            .filter(order -> (merchant == null || order.getItems().stream()
+                .anyMatch(item -> item.getProduct().getStore() != null && 
+                                  item.getProduct().getStore().getOwner().getId().equals(merchant.getId()))))
+            .collect(java.util.stream.Collectors.toList());
     }
 }

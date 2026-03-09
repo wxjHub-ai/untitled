@@ -44,18 +44,24 @@ public class DataInitializer {
             }
 
             Store merchantStore = storeService.getStoreByOwner(merchantUser);
+            if (merchantStore == null && merchantUser.getRole() == Role.MERCHANT) {
+                merchantStore = storeService.createDefaultStore(merchantUser);
+                System.out.println("--- 为现有商家补全店铺信息 ---");
+            }
 
             // Initialize Products
             if (productRepository.count() == 0) {
-                Product p1 = new Product("卫龙大面筋辣条", "经典儿时回忆", new BigDecimal("5.50"), 100, "https://img14.360buyimg.com/n0/jfs/t1/157567/2/22752/155097/61beed2eE10459347/a353683610931551.jpg", "辣条");
+                Product p1 = new Product("卫龙大面筋辣条", "经典儿时回忆", new BigDecimal("5.50"), 100, "/product_images/0a72c1c7-5a20-4749-acbe-7dc86b3d1520.jpeg", "辣条");
                 p1.setStore(merchantStore);
                 
-                Product p2 = new Product("三只松鼠每日坚果", "健康混合坚果", new BigDecimal("29.90"), 50, "https://img14.360buyimg.com/n0/jfs/t1/135967/26/18260/256877/5fca087fE896350d6/d344585141258d4a.jpg", "坚果");
+                Product p2 = new Product("三只松鼠每日坚果", "健康混合坚果", new BigDecimal("29.90"), 50, "/product_images/352486be-3f3f-4faa-b6bc-0ee83c20f50f.png", "坚果");
                 p2.setStore(merchantStore);
 
-                Product p3 = new Product("乐事薯片原味", "经典原味", new BigDecimal("7.80"), 200, "https://img14.360buyimg.com/n0/jfs/t1/211145/26/8788/247963/61824383E65543c8d/09a066491e0a2489.jpg", "膨化食品");
+                Product p3 = new Product("乐事薯片原味", "经典原味", new BigDecimal("7.80"), 200, "/product_images/4342e65f-d338-4eeb-9ae5-0ed09093ee6d.jpg", "膨化食品");
+                p3.setStore(merchantStore);
                 
-                Product p4 = new Product("奥利奥夹心饼干", "经典巧克力味", new BigDecimal("12.50"), 150, "https://img14.360buyimg.com/n0/jfs/t1/169829/4/23573/193214/61a72d3fE2161f366/0912198083818e8d.jpg", "饼干");
+                Product p4 = new Product("奥利奥夹心饼干", "经典巧克力味", new BigDecimal("12.50"), 150, "/product_images/50df0848-437f-40c4-839c-f888a9fdfdac.webp", "饼干");
+                p4.setStore(merchantStore);
 
                 productRepository.save(p1);
                 productRepository.save(p2);

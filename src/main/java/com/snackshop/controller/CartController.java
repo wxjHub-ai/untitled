@@ -59,8 +59,34 @@ public class CartController {
 
         Product product = productService.getProductById(productId).orElse(null);
         if (product != null) {
-            cartService.addItem(user, product, quantity);
+            try {
+                cartService.addItem(user, product, quantity);
+            } catch (RuntimeException e) {
+                return "redirect:/product/" + productId + "?error=" + java.net.URLEncoder.encode(e.getMessage(), java.nio.charset.StandardCharsets.UTF_8);
+            }
         }
+        return "redirect:/cart";
+    }
+
+    @GetMapping("/increment/{productId}")
+    public String incrementQuantity(@PathVariable Long productId) {
+        User user = getCurrentUser();
+        if (user == null) return "redirect:/login";
+
+        try {
+            cartService.updateQuantity(user, productId, 1);
+        } catch (RuntimeException e) {
+            return "redirect:/cart?error=" + java.net.URLEncoder.encode(e.getMessage(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+        return "redirect:/cart";
+    }
+
+    @GetMapping("/decrement/{productId}")
+    public String decrementQuantity(@PathVariable Long productId) {
+        User user = getCurrentUser();
+        if (user == null) return "redirect:/login";
+
+        cartService.updateQuantity(user, productId, -1);
         return "redirect:/cart";
     }
 

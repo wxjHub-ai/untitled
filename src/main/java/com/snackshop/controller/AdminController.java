@@ -54,19 +54,39 @@ public class AdminController {
     }
 
     @GetMapping
-    public String dashboard(Model model) {
+    public String dashboard(@RequestParam(required = false) Integer year, Model model) {
         User user = getCurrentUser();
         if (user == null) return "redirect:/login";
 
+        int currentYear = java.time.LocalDate.now().getYear();
+        int selectedYear = (year != null) ? year : currentYear;
+        model.addAttribute("selectedYear", selectedYear);
+        
+        // Years for selector: last 5 years
+        List<Integer> availableYears = java.util.stream.IntStream.rangeClosed(currentYear - 4, currentYear)
+                .boxed().sorted(java.util.Collections.reverseOrder()).collect(Collectors.toList());
+        model.addAttribute("availableYears", availableYears);
+
         if (user.getRole() == Role.MERCHANT) {
             Store store = storeService.getStoreByOwner(user);
+            if (store == null) {
+                store = storeService.createDefaultStore(user);
+            }
+            final Store finalStore = store;
             List<Product> products = productService.getProductsByStore(store);
-            List<com.snackshop.model.Order> orders = orderService.getOrdersByMerchant(user);
+            List<com.snackshop.model.Order> allOrders = orderService.getOrdersByMerchant(user);
+            List<com.snackshop.model.Order> orders = allOrders.stream()
+                .filter(o -> o.getOrderDate().getYear() == selectedYear)
+                .collect(Collectors.toList());
             
             model.addAttribute("productCount", products.size());
             model.addAttribute("userCount", null);
             model.addAttribute("orderCount", orders.size());
-            model.addAttribute("totalRevenue", orderService.getMerchantRevenue(user));
+            model.addAttribute("totalRevenue", orders.stream()
+                .flatMap(o -> o.getItems().stream())
+                .filter(item -> item.getProduct().getStore() != null && item.getProduct().getStore().getId().equals(finalStore.getId()))
+                .map(item -> item.getPrice().multiply(new java.math.BigDecimal(item.getQuantity())))
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add));
             
             // Charts Data (Merchant Specific)
             Map<String, java.math.BigDecimal> dailyRevenue = orders.stream()
@@ -75,7 +95,7 @@ public class AdminController {
                     TreeMap::new,
                     Collectors.reducing(java.math.BigDecimal.ZERO, 
                         o -> o.getItems().stream()
-                            .filter(item -> item.getProduct().getStore() != null && item.getProduct().getStore().getId().equals(store.getId()))
+                            .filter(item -> item.getProduct().getStore() != null && item.getProduct().getStore().getId().equals(finalStore.getId()))
                             .map(item -> item.getPrice().multiply(new java.math.BigDecimal(item.getQuantity())))
                             .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add),
                         java.math.BigDecimal::add)
@@ -96,7 +116,7 @@ public class AdminController {
                     o -> o.getOrderDate().format(DateTimeFormatter.ofPattern("MM-dd")),
                     TreeMap::new,
                     Collectors.summingInt(o -> o.getItems().stream()
-                        .filter(item -> item.getProduct().getStore() != null && item.getProduct().getStore().getId().equals(store.getId()))
+                        .filter(item -> item.getProduct().getStore() != null && item.getProduct().getStore().getId().equals(finalStore.getId()))
                         .mapToInt(com.snackshop.model.OrderItem::getQuantity).sum())
                 ));
             model.addAttribute("productCountLabels", dailyProductCount.keySet());
@@ -104,12 +124,20 @@ public class AdminController {
             
         } else {
             // Admin Global Logic
+            List<com.snackshop.model.Order> allOrders = orderRepository.findAll();
+            List<com.snackshop.model.Order> orders = allOrders.stream()
+                .filter(o -> o.getOrderDate().getYear() == selectedYear)
+                .collect(Collectors.toList());
+
             model.addAttribute("productCount", productService.getAllProducts().size());
             model.addAttribute("userCount", userRepository.count());
-            model.addAttribute("orderCount", orderRepository.count());
-            model.addAttribute("totalRevenue", orderService.getTotalRevenue());
+            model.addAttribute("merchantCount", userRepository.countByRole(Role.MERCHANT));
+            model.addAttribute("orderCount", orders.size());
+            model.addAttribute("totalRevenue", orders.stream()
+                .map(com.snackshop.model.Order::getTotalAmount)
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add));
 
-            Map<String, java.math.BigDecimal> dailyRevenue = orderRepository.findAll().stream()
+            Map<String, java.math.BigDecimal> dailyRevenue = orders.stream()
                 .collect(Collectors.groupingBy(
                     o -> o.getOrderDate().format(DateTimeFormatter.ofPattern("MM-dd")),
                     TreeMap::new,
@@ -118,7 +146,7 @@ public class AdminController {
             model.addAttribute("chartLabels", dailyRevenue.keySet());
             model.addAttribute("chartData", dailyRevenue.values());
 
-            Map<String, Long> dailyOrderCount = orderRepository.findAll().stream()
+            Map<String, Long> dailyOrderCount = orders.stream()
                 .collect(Collectors.groupingBy(
                     o -> o.getOrderDate().format(DateTimeFormatter.ofPattern("MM-dd")),
                     TreeMap::new, Collectors.counting()
@@ -126,7 +154,7 @@ public class AdminController {
             model.addAttribute("orderTrendLabels", dailyOrderCount.keySet());
             model.addAttribute("orderTrendData", dailyOrderCount.values());
 
-            Map<String, Integer> dailyProductCount = orderRepository.findAll().stream()
+            Map<String, Integer> dailyProductCount = orders.stream()
                 .collect(Collectors.groupingBy(
                     o -> o.getOrderDate().format(DateTimeFormatter.ofPattern("MM-dd")),
                     TreeMap::new,
@@ -163,16 +191,18 @@ public class AdminController {
     @GetMapping("/orders")
     public String listOrders(
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String username,
             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate startDate,
             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate endDate,
             Model model) {
         User user = getCurrentUser();
         List<com.snackshop.model.Order> orders = user.getRole() == Role.MERCHANT ? 
-            orderService.searchOrders(status, startDate, endDate, user) :
-            orderService.searchOrders(status, startDate, endDate, null);
+            orderService.searchOrders(status, username, startDate, endDate, user) :
+            orderService.searchOrders(status, username, startDate, endDate, null);
         
         model.addAttribute("orders", orders);
         model.addAttribute("status", status);
+        model.addAttribute("username", username);
         model.addAttribute("startDate", startDate);
         model.addAttribute("endDate", endDate);
         return "admin_orders";
@@ -198,12 +228,19 @@ public class AdminController {
     @GetMapping("/products")
     public String listProducts(@RequestParam(required = false) Long merchantId, Model model) {
         User user = getCurrentUser();
+        if (user == null) return "redirect:/login";
+
         List<Product> products;
         if (user.getRole() == Role.MERCHANT) {
-            products = productService.getProductsByStore(storeService.getStoreByOwner(user));
+            Store store = storeService.getStoreByOwner(user);
+            if (store == null) {
+                store = storeService.createDefaultStore(user);
+            }
+            products = productService.getProductsByStore(store);
         } else if (merchantId != null) {
             User merchant = userRepository.findById(merchantId).orElse(null);
-            products = merchant != null ? productService.getProductsByStore(storeService.getStoreByOwner(merchant)) : productService.getAllProducts();
+            Store store = merchant != null ? storeService.getStoreByOwner(merchant) : null;
+            products = store != null ? productService.getProductsByStore(store) : productService.getAllProducts();
         } else {
             products = productService.getAllProducts();
         }
@@ -217,6 +254,8 @@ public class AdminController {
 
     @GetMapping("/products/add")
     public String addProductForm(Model model) {
+        User user = getCurrentUser();
+        if (user == null) return "redirect:/login";
         model.addAttribute("product", new Product());
         return "admin_product_form";
     }
@@ -225,25 +264,74 @@ public class AdminController {
     public String saveProduct(@Valid @ModelAttribute Product product, BindingResult bindingResult, @RequestParam("imageFile") MultipartFile imageFile, Model model) {
         if (bindingResult.hasErrors()) return "admin_product_form";
         User user = getCurrentUser();
+        if (user == null) return "redirect:/login";
+
+        Store merchantStore = null;
+        if (user.getRole() == Role.MERCHANT) {
+            merchantStore = storeService.getStoreByOwner(user);
+            if (merchantStore == null) {
+                // If merchant has no store, create one on the fly (shouldn't happen with DataInitializer fix)
+                merchantStore = storeService.createDefaultStore(user);
+            }
+        }
+
         if (product.getId() != null) {
-            productService.getProductById(product.getId()).ifPresent(existing -> product.setStore(existing.getStore()));
+            // Update
+            Product existing = productService.getProductById(product.getId()).orElse(null);
+            if (existing == null) return "redirect:/admin/products";
+
+            if (user.getRole() == Role.MERCHANT) {
+                if (existing.getStore() == null || !existing.getStore().getId().equals(merchantStore.getId())) {
+                    return "redirect:/admin/products";
+                }
+                product.setStore(merchantStore);
+            } else {
+                // Admin can update any product, keep existing store
+                product.setStore(existing.getStore());
+            }
+        } else {
+            // New product
+            if (user.getRole() == Role.MERCHANT) {
+                product.setStore(merchantStore);
+            }
         }
-        if (user != null && user.getRole() == Role.MERCHANT) {
-            product.setStore(storeService.getStoreByOwner(user));
-        }
+        
         productService.saveProduct(product, imageFile);
         return "redirect:/admin/products";
     }
 
     @GetMapping("/products/edit/{id}")
     public String editProductForm(@PathVariable Long id, Model model) {
+        User user = getCurrentUser();
+        if (user == null) return "redirect:/login";
+
         Product product = productService.getProductById(id).orElse(null);
+        if (product == null) return "redirect:/admin/products";
+
+        if (user.getRole() == Role.MERCHANT) {
+            Store store = storeService.getStoreByOwner(user);
+            if (store == null || product.getStore() == null || !product.getStore().getId().equals(store.getId())) {
+                return "redirect:/admin/products";
+            }
+        }
+
         model.addAttribute("product", product);
         return "admin_product_form";
     }
 
     @GetMapping("/products/delete/{id}")
     public String deleteProduct(@PathVariable Long id) {
+        User user = getCurrentUser();
+        if (user == null) return "redirect:/login";
+
+        Product product = productService.getProductById(id).orElse(null);
+        if (product != null && user.getRole() == Role.MERCHANT) {
+            Store store = storeService.getStoreByOwner(user);
+            if (store == null || product.getStore() == null || !product.getStore().getId().equals(store.getId())) {
+                return "redirect:/admin/products";
+            }
+        }
+        
         productService.deleteProduct(id);
         return "redirect:/admin/products";
     }

@@ -37,6 +37,22 @@ public class UserService {
         }
     }
 
+    public Optional<User> findByUsername(String username) {
+        return userRepository.findByUsername(username);
+    }
+
+    @Transactional
+    public void updateUserProfile(User updatedUser, String newPassword) {
+        User user = userRepository.findById(updatedUser.getId())
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+        
+        user.setEmail(updatedUser.getEmail());
+        if (newPassword != null && !newPassword.isEmpty()) {
+            user.setPassword(passwordEncoder.encode(newPassword));
+        }
+        userRepository.save(user);
+    }
+
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }

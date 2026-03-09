@@ -71,7 +71,8 @@
                 <div class="card h-100">
                     <div style="height: 200px; overflow: hidden; position: relative;">
                          <img th:src="${product.imageUrl} ?: 'https://via.placeholder.com/300'" class="card-img-top w-100 h-100" style="object-fit: cover;" alt="商品图片">
-                         <span class="badge bg-danger position-absolute top-0 end-0 m-3" th:if="${product.stock < 10}">库存紧张</span>
+                         <span class="badge bg-secondary position-absolute top-0 end-0 m-3" th:if="${product.stock == 0}">已售罄</span>
+                         <span class="badge bg-danger position-absolute top-0 end-0 m-3" th:if="${product.stock > 0 && product.stock < 10}">库存紧张</span>
                     </div>
                     <div class="card-body d-flex flex-column">
                         <h5 class="card-title fw-bold" th:text="${product.name}">商品名称</h5>
