@@ -11,6 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * 用户服务类，处理用户注册、查询、个人信息更新、角色管理等业务逻辑。
+ */
 @Service
 public class UserService {
     @Autowired
@@ -22,41 +25,73 @@ public class UserService {
     @Autowired
     private StoreService storeService;
 
+    /**
+     * 注册新用户。
+     * 为密码加密，并根据用户角色（如商家）初始化默认店铺。
+     * 
+     * @param user 用户实体
+     */
     @Transactional
     public void registerUser(User user) {
+        // 加密用户密码
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        // If no role is selected or someone tries to hack ADMIN role via registration
+        
+        // 如果未选择角色或尝试通过注册获得管理员权限，默认设为普通用户
         if (user.getRole() == null || user.getRole() == Role.ADMIN) {
             user.setRole(Role.USER);
         }
         User savedUser = userRepository.save(user);
 
-        // If merchant, create a default store
+        // 如果用户角色为商家，为其创建一个默认店铺
         if (savedUser.getRole() == Role.MERCHANT) {
-            storeService.createDefaultStore(user); // Use user which contains storeName
+            storeService.createDefaultStore(user);
         }
     }
 
+    /**
+     * 根据用户名查找用户。
+     * 
+     * @param username 用户名
+     * @return 包含用户的 Optional 对象
+     */
     public Optional<User> findByUsername(String username) {
         return userRepository.findByUsername(username);
     }
 
+    /**
+     * 更新用户个人资料。
+     * 
+     * @param updatedUser 包含新资料的用户对象
+     * @param newPassword 新密码（如果需要更新）
+     */
     @Transactional
     public void updateUserProfile(User updatedUser, String newPassword) {
         User user = userRepository.findById(updatedUser.getId())
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
         
         user.setEmail(updatedUser.getEmail());
+        // 如果提供了新密码且不为空，则更新加密后的密码
         if (newPassword != null && !newPassword.isEmpty()) {
             user.setPassword(passwordEncoder.encode(newPassword));
         }
         userRepository.save(user);
     }
 
+    /**
+     * 获取系统中所有用户的列表。
+     * 
+     * @return 用户列表
+     */
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
 
+    /**
+     * 更新指定用户的角色。
+     * 
+     * @param id 用户ID
+     * @param role 新角色
+     */
     public void updateUserRole(Long id, Role role) {
         Optional<User> user = userRepository.findById(id);
         if (user.isPresent()) {
@@ -66,6 +101,11 @@ public class UserService {
         }
     }
 
+    /**
+     * 删除指定ID的用户。
+     * 
+     * @param id 用户ID
+     */
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
     }

@@ -13,6 +13,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import javax.servlet.http.HttpSession;
 import java.util.List;
 
+/**
+ * 购物车控制器
+ * 处理用户购物车的查看、添加、修改、删除及结算功能
+ */
 @Controller
 @RequestMapping("/cart")
 public class CartController {
@@ -32,6 +36,10 @@ public class CartController {
     @Autowired
     private UserRepository userRepository;
 
+    /**
+     * 获取当前登录用户
+     * @return 当前登录的用户对象，若未登录则返回 null
+     */
     private User getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
@@ -40,6 +48,9 @@ public class CartController {
         return userRepository.findByUsername(auth.getName()).orElse(null);
     }
 
+    /**
+     * 查看购物车页面
+     */
     @GetMapping
     public String viewCart(Model model) {
         User user = getCurrentUser();
@@ -48,10 +59,16 @@ public class CartController {
         List<CartItem> items = cartService.getCartItems(user);
         model.addAttribute("cartItems", items);
         model.addAttribute("totalAmount", cartService.getTotalAmount(user));
+        // 提供用户的收货地址簿供结算选择
         model.addAttribute("addresses", userAddressService.getAddressesByUser(user));
         return "cart";
     }
 
+    /**
+     * 向购物车添加商品
+     * @param productId 商品ID
+     * @param quantity 添加数量，默认为 1
+     */
     @PostMapping("/add")
     public String addToCart(@RequestParam Long productId, @RequestParam(defaultValue = "1") int quantity) {
         User user = getCurrentUser();
@@ -62,12 +79,16 @@ public class CartController {
             try {
                 cartService.addItem(user, product, quantity);
             } catch (RuntimeException e) {
+                // 如果添加失败（如库存不足），重定向回详情页并携带错误信息
                 return "redirect:/product/" + productId + "?error=" + java.net.URLEncoder.encode(e.getMessage(), java.nio.charset.StandardCharsets.UTF_8);
             }
         }
         return "redirect:/cart";
     }
 
+    /**
+     * 增加购物车内某项商品的数量
+     */
     @GetMapping("/increment/{productId}")
     public String incrementQuantity(@PathVariable Long productId) {
         User user = getCurrentUser();
@@ -81,6 +102,9 @@ public class CartController {
         return "redirect:/cart";
     }
 
+    /**
+     * 减少购物车内某项商品的数量
+     */
     @GetMapping("/decrement/{productId}")
     public String decrementQuantity(@PathVariable Long productId) {
         User user = getCurrentUser();
@@ -90,6 +114,9 @@ public class CartController {
         return "redirect:/cart";
     }
 
+    /**
+     * 从购物车中移除特定商品
+     */
     @GetMapping("/remove/{productId}")
     public String removeFromCart(@PathVariable Long productId) {
         User user = getCurrentUser();
@@ -99,11 +126,17 @@ public class CartController {
         return "redirect:/cart";
     }
 
+    /**
+     * 购物车结算下单
+     * @param addressId 选择的地址簿ID（可选）
+     * @param deliveryAddress 直接填写的收货地址（可选）
+     */
     @PostMapping("/checkout")
     public String checkout(@RequestParam(required = false) Long addressId, @RequestParam(required = false) String deliveryAddress) {
         User user = getCurrentUser();
         if (user == null) return "redirect:/login";
 
+        // 确定最终使用的收货地址
         String finalAddress = deliveryAddress;
         if (addressId != null) {
             UserAddress savedAddr = userAddressService.getAddressesByUser(user).stream()
@@ -123,6 +156,7 @@ public class CartController {
             return "redirect:/cart";
         }
 
+        // 将购物车项转换为订单项
         List<OrderItem> orderItems = new java.util.ArrayList<>();
         for (CartItem ci : cartItems) {
             OrderItem oi = new OrderItem();
@@ -133,6 +167,7 @@ public class CartController {
         }
 
         try {
+            // 创建订单并清空购物车
             orderService.createOrder(user, orderItems, cartService.getTotalAmount(user), finalAddress);
             cartService.clearCart(user);
         } catch (RuntimeException e) {
