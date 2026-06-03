@@ -27,7 +27,7 @@ public class UserService {
 
     /**
      * 注册新用户。
-     * 为密码加密，并根据用户角色（如商家）初始化默认店铺。
+     * 为密码加密，并根据用户角色（如商家）设置初始状态。
      * 
      * @param user 用户实体
      */
@@ -40,12 +40,45 @@ public class UserService {
         if (user.getRole() == null || user.getRole() == Role.ADMIN) {
             user.setRole(Role.USER);
         }
-        User savedUser = userRepository.save(user);
 
-        // 如果用户角色为商家，为其创建一个默认店铺
-        if (savedUser.getRole() == Role.MERCHANT) {
-            storeService.createDefaultStore(user);
+        // 逻辑调整：如果是商家注册，状态设为 PENDING (待审核)
+        if (user.getRole() == Role.MERCHANT) {
+            user.setStatus(com.snackshop.model.UserStatus.PENDING);
+        } else {
+            user.setStatus(com.snackshop.model.UserStatus.APPROVED);
         }
+
+        userRepository.save(user);
+        
+        // 注意：店铺创建现在延迟到管理员审核通过后
+    }
+
+    /**
+     * 审核通过商家申请
+     * @param id 用户ID
+     */
+    @Transactional
+    public void approveUser(Long id) {
+        userRepository.findById(id).ifPresent(user -> {
+            user.setStatus(com.snackshop.model.UserStatus.APPROVED);
+            userRepository.save(user);
+            // 审核通过时，如果是商家且没有店铺，为其创建店铺
+            if (user.getRole() == Role.MERCHANT && user.getStore() == null) {
+                storeService.createDefaultStore(user);
+            }
+        });
+    }
+
+    /**
+     * 驳回商家申请
+     * @param id 用户ID
+     */
+    @Transactional
+    public void rejectUser(Long id) {
+        userRepository.findById(id).ifPresent(user -> {
+            user.setStatus(com.snackshop.model.UserStatus.REJECTED);
+            userRepository.save(user);
+        });
     }
 
     /**

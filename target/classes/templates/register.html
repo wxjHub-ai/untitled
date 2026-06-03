@@ -35,9 +35,15 @@
                             </div>
                             <div class="mb-3" id="storeNameDiv" style="display:none;">
                                 <label class="form-label text-muted">商店名称</label>
-                                <div class="input-group">
+                                <div class="input-group mb-3">
                                     <span class="input-group-text bg-light border-end-0"><i class="fas fa-store"></i></span>
-                                    <input type="text" th:field="*{storeName}" class="form-control bg-light border-start-0">
+                                    <input type="text" th:field="*{storeName}" class="form-control bg-light border-start-0" placeholder="为您的新店起个名字">
+                                </div>
+                                
+                                <label class="form-label text-muted">入驻留言/理由</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-comment-alt"></i></span>
+                                    <textarea th:field="*{merchantApplicationReason}" class="form-control bg-light border-start-0" rows="3" placeholder="描述您的经营经验或申请理由..."></textarea>
                                 </div>
                             </div>
                             <script>

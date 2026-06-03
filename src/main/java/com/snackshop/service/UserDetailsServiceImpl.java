@@ -36,6 +36,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .withUsername(user.getUsername())
                 .password(user.getPassword())
                 .roles(user.getRole().name())
+                .disabled(user.getStatus() != null && user.getStatus() != com.snackshop.model.UserStatus.APPROVED)
                 .build();
     }
 }

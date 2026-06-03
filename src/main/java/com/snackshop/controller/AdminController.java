@@ -157,6 +157,10 @@ public class AdminController {
             model.addAttribute("productCount", productService.getAllProducts().size());
             model.addAttribute("userCount", userRepository.count());
             model.addAttribute("merchantCount", userRepository.countByRole(Role.MERCHANT));
+            // 新增：待审核商家数量
+            model.addAttribute("pendingMerchantCount", userService.getAllUsers().stream()
+                .filter(u -> u.getRole() == Role.MERCHANT && u.getStatus() == UserStatus.PENDING)
+                .count());
             model.addAttribute("orderCount", orders.size());
             model.addAttribute("totalRevenue", orders.stream()
                 .map(com.snackshop.model.Order::getTotalAmount)
@@ -194,22 +198,59 @@ public class AdminController {
 
     /**
      * 用户管理列表（仅管理员可见）
+     * 支持按角色分类查看，并提供不同的搜索维度
      */
     @GetMapping("/users")
-    public String listUsers(Model model) {
+    public String listUsers(
+            @RequestParam(required = false) Role role,
+            @RequestParam(required = false) String query,
+            Model model) {
         User user = getCurrentUser();
         if (user != null && user.getRole() == Role.MERCHANT) return "redirect:/admin";
-        model.addAttribute("users", userService.getAllUsers());
+        
+        List<User> users = userService.getAllUsers();
+        
+        // 按角色过滤
+        if (role != null) {
+            users = users.stream()
+                .filter(u -> u.getRole() == role)
+                .collect(Collectors.toList());
+        } else {
+            // 默认不显示管理员自己
+            users = users.stream()
+                .filter(u -> u.getRole() != Role.ADMIN)
+                .collect(Collectors.toList());
+        }
+
+        // 执行搜索逻辑
+        if (query != null && !query.isEmpty()) {
+            final String q = query.toLowerCase();
+            users = users.stream().filter(u -> {
+                if (u.getRole() == Role.MERCHANT) {
+                    // 商家搜索：店名或用户名
+                    String storeName = u.getStore() != null ? u.getStore().getName() : u.getStoreName();
+                    return (storeName != null && storeName.toLowerCase().contains(q)) || 
+                           u.getUsername().toLowerCase().contains(q);
+                } else {
+                    // 普通用户搜索：用户名或邮箱
+                    return u.getUsername().toLowerCase().contains(q) || 
+                           (u.getEmail() != null && u.getEmail().toLowerCase().contains(q));
+                }
+            }).collect(Collectors.toList());
+        }
+
+        model.addAttribute("users", users);
+        model.addAttribute("currentRole", role);
+        model.addAttribute("query", query);
         return "admin_users";
     }
 
     /**
-     * 更新用户角色（仅管理员权限）
+     * 更新用户角色（已废弃 - 管理员不再负责角色变更）
      */
     @PostMapping("/users/updateRole")
-    public String updateUserRole(@RequestParam Long userId, @RequestParam Role role) {
-        if (getCurrentUser().getRole() != Role.ADMIN) return "redirect:/admin";
-        userService.updateUserRole(userId, role);
+    @Deprecated
+    public String updateUserRole(@RequestParam Long userId, @RequestParam Role role, RedirectAttributes redirectAttributes) {
         return "redirect:/admin/users";
     }
 
@@ -217,9 +258,52 @@ public class AdminController {
      * 删除用户（仅管理员权限）
      */
     @GetMapping("/users/delete/{id}")
-    public String deleteUser(@PathVariable Long id) {
-        if (getCurrentUser().getRole() != Role.ADMIN) return "redirect:/admin";
-        userService.deleteUser(id);
+    public String deleteUser(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        User currentUser = getCurrentUser();
+        if (currentUser == null || currentUser.getRole() != Role.ADMIN) {
+            return "redirect:/admin";
+        }
+        
+        // 禁止管理员删除自己
+        if (currentUser.getId().equals(id)) {
+            redirectAttributes.addFlashAttribute("errorMessage", "不能删除当前登录的管理员账号！");
+            return "redirect:/admin/users";
+        }
+
+        try {
+            userService.deleteUser(id);
+            redirectAttributes.addFlashAttribute("successMessage", "用户删除成功！");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "删除用户失败（该用户可能有相关订单或数据）：" + e.getMessage());
+        }
+        return "redirect:/admin/users";
+    }
+
+    /**
+     * 审核通过商家（仅管理员权限）
+     */
+    @GetMapping("/users/approve/{id}")
+    public String approveUser(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        User currentUser = getCurrentUser();
+        if (currentUser == null || currentUser.getRole() != Role.ADMIN) {
+            return "redirect:/admin";
+        }
+        userService.approveUser(id);
+        redirectAttributes.addFlashAttribute("successMessage", "商家审核已通过！");
+        return "redirect:/admin/users";
+    }
+
+    /**
+     * 驳回商家（仅管理员权限）
+     */
+    @GetMapping("/users/reject/{id}")
+    public String rejectUser(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        User currentUser = getCurrentUser();
+        if (currentUser == null || currentUser.getRole() != Role.ADMIN) {
+            return "redirect:/admin";
+        }
+        userService.rejectUser(id);
+        redirectAttributes.addFlashAttribute("successMessage", "商家审核已驳回！");
         return "redirect:/admin/users";
     }
 
@@ -386,20 +470,31 @@ public class AdminController {
      * 删除商品
      */
     @GetMapping("/products/delete/{id}")
-    public String deleteProduct(@PathVariable Long id) {
+    public String deleteProduct(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         User user = getCurrentUser();
         if (user == null) return "redirect:/login";
 
         Product product = productService.getProductById(id).orElse(null);
+        if (product == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "商品不存在！");
+            return "redirect:/admin/products";
+        }
+
         // 商家删除权限校验
-        if (product != null && user.getRole() == Role.MERCHANT) {
+        if (user.getRole() == Role.MERCHANT) {
             Store store = storeService.getStoreByOwner(user);
             if (store == null || product.getStore() == null || !product.getStore().getId().equals(store.getId())) {
+                redirectAttributes.addFlashAttribute("errorMessage", "无权删除他人的商品！");
                 return "redirect:/admin/products";
             }
         }
         
-        productService.deleteProduct(id);
+        try {
+            productService.deleteProduct(id);
+            redirectAttributes.addFlashAttribute("successMessage", "商品删除成功！");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "删除商品失败：" + e.getMessage());
+        }
         return "redirect:/admin/products";
     }
 }

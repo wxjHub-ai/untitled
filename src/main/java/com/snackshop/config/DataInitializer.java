@@ -51,7 +51,9 @@ public class DataInitializer {
                 merchantUser.setPassword("merchant123"); 
                 merchantUser.setEmail("merchant@snackshop.com");
                 merchantUser.setRole(Role.MERCHANT);
-                // 调用服务层方法注册用户，确保业务逻辑的一致性（如创建关联数据）
+                // 新增：设置状态为已通过
+                merchantUser.setStatus(UserStatus.APPROVED);
+                // 调用服务层方法注册用户
                 userService.registerUser(merchantUser);
                 // 重新从数据库加载，以获取生成的主键等信息
                 merchantUser = userRepository.findByUsername("merchant").get();
@@ -96,15 +98,21 @@ public class DataInitializer {
 
             // --- 步骤 4: 初始化管理员账号 ---
             // 检查是否存在管理员账号 "admin"
-            if (userRepository.findByUsername("admin").isEmpty()) {
-                User admin = new User();
+            User admin = userRepository.findByUsername("admin").orElse(null);
+            if (admin == null) {
+                admin = new User();
                 admin.setUsername("admin");
                 // 这里手动使用 passwordEncoder 进行加密，演示不同的加密调用方式
                 admin.setPassword(passwordEncoder.encode("admin123"));
                 admin.setEmail("admin@snackshop.com");
                 admin.setRole(Role.ADMIN);
+                admin.setStatus(UserStatus.APPROVED);
                 userRepository.save(admin);
                 System.out.println("--- 初始化管理员账号: admin / admin123 ---");
+            } else if (admin.getStatus() == null) {
+                // 如果已存在但状态为空（旧数据），则补齐为已通过，确保能正常登录
+                admin.setStatus(UserStatus.APPROVED);
+                userRepository.save(admin);
             }
         };
     }

@@ -6,44 +6,126 @@
 <body>
 <div>
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>用户管理</h2>
+        <h2 class="fw-bold"><i class="fas fa-users-cog me-2"></i>用户管理</h2>
+    </div>
+
+    <!-- 分类标签与搜索栏 -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <ul class="nav nav-pills">
+                        <li class="nav-item">
+                            <a th:href="@{/admin/users}" 
+                               th:class="${currentRole == null ? 'nav-link active shadow-sm' : 'nav-link text-muted'}" 
+                               class="rounded-pill px-4 me-2">全部</a>
+                        </li>
+                        <li class="nav-item">
+                            <a th:href="@{/admin/users(role='USER')}" 
+                               th:class="${currentRole?.name() == 'USER' ? 'nav-link active shadow-sm' : 'nav-link text-muted'}" 
+                               class="rounded-pill px-4 me-2">普通用户</a>
+                        </li>
+                        <li class="nav-item">
+                            <a th:href="@{/admin/users(role='MERCHANT')}" 
+                               th:class="${currentRole?.name() == 'MERCHANT' ? 'nav-link active shadow-sm' : 'nav-link text-muted'}" 
+                               class="rounded-pill px-4">商家用户</a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <form th:action="@{/admin/users}" method="get" class="input-group">
+                        <input type="hidden" name="role" th:if="${currentRole}" th:value="${currentRole}">
+                        <input type="text" name="query" class="form-control rounded-start-pill border-end-0 bg-light" 
+                               th:value="${query}" 
+                               th:placeholder="${currentRole?.name() == 'MERCHANT' ? '搜索店名或用户名...' : '搜索用户名或邮箱...'}">
+                        <button class="btn btn-primary rounded-end-pill px-4" type="submit">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息提示 -->
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${successMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <span th:text="${errorMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 
     <div class="card shadow-sm border-0">
-        <div class="card-body">
+        <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
                         <tr>
-                            <th>ID</th>
-                            <th>用户名</th>
-                            <th>邮箱</th>
+                            <th class="ps-4">用户信息</th>
                             <th>角色</th>
-                            <th>操作</th>
+                            <th th:if="${currentRole?.name() == 'MERCHANT' || currentRole == null}">店铺/申请理由</th>
+                            <th>状态</th>
+                            <th class="text-end pe-4">操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr th:each="user : ${users}">
-                            <td th:text="${user.id}">1</td>
-                            <td th:text="${user.username}">Username</td>
-                            <td th:text="${user.email}">Email</td>
-                            <td>
-                                <form th:action="@{/admin/users/updateRole}" method="post" class="d-flex align-items-center">
-                                    <input type="hidden" name="userId" th:value="${user.id}">
-                                    <select name="role" class="form-select form-select-sm me-2" style="width: auto;">
-                                        <option value="USER" th:selected="${user.role.name() == 'USER'}">普通用户</option>
-                                        <option value="ADMIN" th:selected="${user.role.name() == 'ADMIN'}">管理员</option>
-                                        <option value="MERCHANT" th:selected="${user.role.name() == 'MERCHANT'}">商家</option>
-                                    </select>
-                                    <button type="submit" class="btn btn-sm btn-outline-primary">更新</button>
-                                </form>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm bg-light rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                        <i th:class="${user.role.name() == 'MERCHANT' ? 'fas fa-store text-info' : 'fas fa-user text-primary'}"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold" th:text="${user.username}">Username</div>
+                                        <div class="small text-muted" th:text="${user.email}">Email</div>
+                                    </div>
+                                </div>
                             </td>
                             <td>
-                                <a th:href="@{/admin/users/delete/{id}(id=${user.id})}" 
-                                   class="btn btn-sm btn-outline-danger" 
-                                   onclick="return confirm('确定要删除该用户吗？此操作不可撤销！')">
-                                    <i class="fas fa-trash"></i> 删除
-                                </a>
+                                <span th:class="${user.role.name() == 'MERCHANT' ? 'badge bg-info-light text-info border border-info' : 'badge bg-primary-light text-primary border border-primary'}"
+                                      th:text="${user.role.name() == 'MERCHANT' ? '商家' : '用户'}" 
+                                      class="px-3 rounded-pill">角色</span>
+                            </td>
+                            <td th:if="${currentRole?.name() == 'MERCHANT' || currentRole == null}" style="max-width: 250px;">
+                                <div th:if="${user.role.name() == 'MERCHANT'}">
+                                    <div class="fw-bold text-dark small mb-1" th:if="${user.store != null || user.storeName != null}">
+                                        <i class="fas fa-home me-1"></i>
+                                        <span th:text="${user.store != null ? user.store.name : user.storeName}">店名</span>
+                                    </div>
+                                    <div th:if="${user.merchantApplicationReason != null && !user.merchantApplicationReason.isEmpty()}" 
+                                         class="p-2 border rounded bg-light small text-wrap text-muted" 
+                                         style="max-height: 60px; overflow-y: auto; font-size: 0.75rem;">
+                                        <span th:text="${user.merchantApplicationReason}">理由...</span>
+                                    </div>
+                                </div>
+                                <span th:unless="${user.role.name() == 'MERCHANT'}" class="text-muted small">-</span>
+                            </td>
+                            <td>
+                                <span th:if="${user.status != null && user.status.name() == 'PENDING'}" class="badge bg-warning text-dark px-3 rounded-pill">待审核</span>
+                                <span th:if="${user.status == null || user.status.name() == 'APPROVED'}" class="badge bg-success px-3 rounded-pill">正常</span>
+                                <span th:if="${user.status != null && user.status.name() == 'REJECTED'}" class="badge bg-danger px-3 rounded-pill">已驳回</span>
+                                <span th:if="${user.status != null && user.status.name() == 'DISABLED'}" class="badge bg-secondary px-3 rounded-pill">已禁用</span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="btn-group btn-group-sm">
+                                    <a th:if="${user.status != null && user.status.name() == 'PENDING'}" 
+                                       th:href="@{/admin/users/approve/{id}(id=${user.id})}" 
+                                       class="btn btn-success" title="通过申请">
+                                        <i class="fas fa-check"></i>
+                                    </a>
+                                    <a th:if="${user.status != null && user.status.name() == 'PENDING'}" 
+                                       th:href="@{/admin/users/reject/{id}(id=${user.id})}" 
+                                       class="btn btn-warning" title="驳回申请">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                    <a th:href="@{/admin/users/delete/{id}(id=${user.id})}" 
+                                       class="btn btn-outline-danger" 
+                                       onclick="return confirm('确定要删除该用户吗？此操作不可撤销！')" title="删除用户">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     </tbody>
@@ -52,5 +134,13 @@
         </div>
     </div>
 </div>
+
+<style>
+    .bg-primary-light { background-color: rgba(13, 110, 253, 0.1); }
+    .bg-info-light { background-color: rgba(13, 202, 240, 0.1); }
+    .nav-pills .nav-link.active { box-shadow: 0 4px 6px rgba(13, 110, 253, 0.2); }
+    .table th { font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
+    .avatar-sm { font-size: 1.1rem; }
+</style>
 </body>
 </html>

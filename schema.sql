@@ -13,7 +13,9 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     email VARCHAR(255),
-    role VARCHAR(50) NOT NULL -- 'USER', 'ADMIN', 'MERCHANT'
+    role VARCHAR(50) NOT NULL, -- 'USER', 'ADMIN', 'MERCHANT'
+    status VARCHAR(50) DEFAULT 'APPROVED', -- 'PENDING', 'APPROVED', 'REJECTED', 'DISABLED'
+    merchant_application_reason TEXT
 );
 
 -- =============================================
@@ -115,8 +117,8 @@ COMMENT ON TABLE order_items IS 'Line items for each order';
 
 -- Insert Admin User (Password is 'admin123' hashed with BCrypt - standard for Spring Security)
 -- Note: In a real scenario, passwords must be hashed. This hash is for 'admin123'.
-INSERT INTO users (username, password, email, role) 
-VALUES ('admin', '$2a$10$wW2yVz.7z/M5n.e5d.n.u.J/5.5.5.5.5.5.5.5.5.5', 'admin@snackshop.com', 'ADMIN')
+INSERT INTO users (username, password, email, role, status) 
+VALUES ('admin', '$2a$10$wW2yVz.7z/M5n.e5d.n.u.J/5.5.5.5.5.5.5.5.5.5', 'admin@snackshop.com', 'ADMIN', 'APPROVED')
 ON CONFLICT (username) DO NOTHING;
 
 -- Insert Sample Products

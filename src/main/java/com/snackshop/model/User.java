@@ -2,6 +2,8 @@ package com.snackshop.model;
 
 import javax.persistence.*;
 import java.util.Set;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * 用户实体类，对应数据库中的 users 表
@@ -15,6 +17,12 @@ public class User {
      */
     @Transient
     private String storeName;
+
+    /**
+     * 商家申请留言/理由
+     */
+    @Column(length = 1000)
+    private String merchantApplicationReason;
 
     /**
      * 主键，自动递增
@@ -47,10 +55,34 @@ public class User {
     private Store store;
 
     /**
+     * 用户收货地址
+     */
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserAddress> addresses = new ArrayList<>();
+
+    /**
+     * 用户购物车项
+     */
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CartItem> cartItems = new ArrayList<>();
+
+    /**
+     * 用户订单
+     */
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Order> orders = new ArrayList<>();
+
+    /**
      * 用户的角色（ADMIN, USER 或 MERCHANT），以字符串形式存储在数据库中
      */
     @Enumerated(EnumType.STRING)
     private Role role;
+
+    /**
+     * 用户状态（PENDING, APPROVED, REJECTED, DISABLED）
+     */
+    @Enumerated(EnumType.STRING)
+    private UserStatus status = UserStatus.APPROVED;
 
     /**
      * 默认构造函数，JPA 必须
@@ -64,13 +96,15 @@ public class User {
      * @param email 电子邮件
      * @param role 角色
      * @param storeName 店铺名称
+     * @param status 状态
      */
-    public User(String username, String password, String email, Role role, String storeName) {
+    public User(String username, String password, String email, Role role, String storeName, UserStatus status) {
         this.username = username;
         this.password = password;
         this.email = email;
         this.role = role;
         this.storeName = storeName;
+        this.status = status;
     }
 
     /**
@@ -134,6 +168,42 @@ public class User {
     public void setStore(Store store) { this.store = store; }
 
     /**
+     * 获取收货地址列表
+     * @return 地址列表
+     */
+    public List<UserAddress> getAddresses() { return addresses; }
+
+    /**
+     * 设置收货地址列表
+     * @param addresses 地址列表
+     */
+    public void setAddresses(List<UserAddress> addresses) { this.addresses = addresses; }
+
+    /**
+     * 获取购物车项列表
+     * @return 购物车列表
+     */
+    public List<CartItem> getCartItems() { return cartItems; }
+
+    /**
+     * 设置购物车项列表
+     * @param cartItems 购物车列表
+     */
+    public void setCartItems(List<CartItem> cartItems) { this.cartItems = cartItems; }
+
+    /**
+     * 获取订单列表
+     * @return 订单列表
+     */
+    public List<Order> getOrders() { return orders; }
+
+    /**
+     * 设置订单列表
+     * @param orders 订单列表
+     */
+    public void setOrders(List<Order> orders) { this.orders = orders; }
+
+    /**
      * 获取用户角色
      * @return 角色枚举
      */
@@ -146,6 +216,18 @@ public class User {
     public void setRole(Role role) { this.role = role; }
 
     /**
+     * 获取用户状态
+     * @return 状态枚举
+     */
+    public UserStatus getStatus() { return status; }
+
+    /**
+     * 设置用户状态
+     * @param status 状态枚举
+     */
+    public void setStatus(UserStatus status) { this.status = status; }
+
+    /**
      * 获取临时店铺名称
      * @return 店铺名称
      */
@@ -156,4 +238,16 @@ public class User {
      * @param storeName 店铺名称
      */
     public void setStoreName(String storeName) { this.storeName = storeName; }
+
+    /**
+     * 获取商家申请理由
+     * @return 申请理由
+     */
+    public String getMerchantApplicationReason() { return merchantApplicationReason; }
+
+    /**
+     * 设置商家申请理由
+     * @param merchantApplicationReason 申请理由
+     */
+    public void setMerchantApplicationReason(String merchantApplicationReason) { this.merchantApplicationReason = merchantApplicationReason; }
 }

@@ -2,6 +2,8 @@ package com.snackshop.model;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * 店铺实体类，对应数据库中的 stores 表
@@ -38,6 +40,12 @@ public class Store {
     @OneToOne
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
+
+    /**
+     * 店铺中的商品
+     */
+    @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Product> products = new ArrayList<>();
 
     /**
      * 店铺状态 (例如：ACTIVE, CLOSED)
@@ -113,6 +121,18 @@ public class Store {
      * @param owner 用户对象
      */
     public void setOwner(User owner) { this.owner = owner; }
+
+    /**
+     * 获取店铺商品列表
+     * @return 商品列表
+     */
+    public List<Product> getProducts() { return products; }
+
+    /**
+     * 设置店铺商品列表
+     * @param products 商品列表
+     */
+    public void setProducts(List<Product> products) { this.products = products; }
 
     /**
      * 获取店铺状态
